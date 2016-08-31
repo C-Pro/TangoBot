@@ -1,0 +1,45 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 24
+    buildToolsVersion "24.0.2"
+    defaultConfig {
+        applicationId "com.example.cpro.tangobot"
+        minSdkVersion 19
+        targetSdkVersion 24
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+def external_lib_prefix = 'libs/TangoReleaseLibs'
+
+repositories {
+    flatDir {
+        dirs external_lib_prefix + '/aar'
+    }
+}
+
+
+dependencies {
+    compile fileTree(include: ['*.jar'], dir: 'libs')
+    androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
+        exclude group: 'com.android.support', module: 'support-annotations'
+    })
+    compile 'com.android.support:appcompat-v7:24.2.0'
+    testCompile 'junit:junit:4.12'
+    compile project(':usbSerialForAndroid')
+    compile (name: 'tango_support_java_lib', ext: 'aar')
+    compile fileTree(dir: external_lib_prefix + '/jar', include: ['**/*.jar'])
+    compile 'com.google.firebase:firebase-database:9.4.0'
+}
+
+apply plugin: 'com.google.gms.google-services'
+
