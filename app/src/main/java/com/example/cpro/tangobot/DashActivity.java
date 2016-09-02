@@ -221,6 +221,7 @@ public class DashActivity extends AppCompatActivity {
      * Tracking API. This is called in response to the user clicking the 'Start' Button.
      */
     private void setTangoListeners() {
+        timesSeenObstacle = 0;
         // Lock configuration and connect to Tango.
         // Select coordinate frame pair.
         final ArrayList<TangoCoordinateFramePair> framePairs =
@@ -253,9 +254,11 @@ public class DashActivity extends AppCompatActivity {
         });
     }
 
+    //to filter out false positives
+    private int timesSeenObstacle;
+
     /**
-     * Log the point count and the average depth of the given XyzIj data
-     * in the Logcat as information.
+     * Analyze point cloud data and decide if we should turn to avoid collision
      */
     private void updatePosition(TangoXyzIjData xyzIjData) {
 
@@ -272,7 +275,6 @@ public class DashActivity extends AppCompatActivity {
         float X, Y, Z;
         float minZ = 100500;
         float minParaZ = 100500;
-        boolean obstacle = false;
         int cntPointsTooClose = 0;
 
         for (int i = 0; i < xyzIjData.xyz.capacity() - 3; i = i + 3) {
@@ -282,43 +284,38 @@ public class DashActivity extends AppCompatActivity {
             minZ = Math.min(minZ, Z);
             if (Z > (6*Math.pow(X,2) + 10*Math.pow(Y+0.1,2))) {
                 minParaZ = Math.min(minParaZ, Z);
-                if (Z < 0.6) {
+                if (Z < 0.5) {
                     if (++cntPointsTooClose > 5) {
-                        obstacle = true;
+                        timesSeenObstacle++;
                         break;
                     }
                 }
             }
         }
+        if(cntPointsTooClose<=5) {
+            timesSeenObstacle=0;
+        }
         byte[] cmd;
 
-        if (obstacle) {
+        if (timesSeenObstacle>1 && timesSeenObstacle < 10) {
             cmd = new byte[]{'L'};
             stateString = String.format("Turning left (%.3f,%.3f)", minZ, minParaZ);
-            Log.i(TAG, stateString);
-
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    mTextView.setText(stateString);
-                }
-            });
-
-        } else {
-            cmd = new byte[]{'F'};
-            stateString = String.format("Go forward (%.3f,%.3f)", minZ, minParaZ);
-            Log.i(TAG, stateString);
-
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    mTextView.setText(stateString);
-                }
-            });
-
+        } else if (timesSeenObstacle > 9) {
+            cmd = new byte[]{'B'};
+            stateString = "Go backward";
+        } else  {
+                cmd = new byte[]{'F'};
+                stateString = String.format("Go forward (%.3f,%.3f)", minZ, minParaZ);
         }
-        sendCmd(cmd);
+        Log.i(TAG, stateString);
 
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mTextView.setText(stateString);
+            }
+        });
+        sendCmd(cmd);
     }
 
 
